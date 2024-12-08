@@ -88,3 +88,39 @@ def connect_to_prodev():
         print(f"Error connecting to ALX_prodev: {err}")
         return None
 
+
+def create_table(connection):
+    """
+    Creates a table user_data if it does not exists with the required fields
+
+    Args:
+        connection: A MySQL connection object.
+    
+    Returns:
+        nothing
+    """
+    try:
+        if connection and connection.is_connected():
+             with connection.cursor() as cursor:
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_data (
+                    user_id CHAR(36) DEFAULT (UUID()) PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    age DECIMAL(3, 0) NOT NULL
+                )
+            """)
+            connection.commit()
+
+        else:
+            raise ValueError("Error database not connected.")
+
+    except mysql.connector.Error as err:
+        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            print("Something is wrong with your user name or password")
+        elif err.errno == errorcode.ER_BAD_DB_ERROR:
+            print("Database does not exist")
+        else:
+            print(err)
+
+
