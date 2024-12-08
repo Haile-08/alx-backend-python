@@ -2,7 +2,7 @@ import mysql.connector
 from dotenv import load_dotenv
 import os
 
-def connect_db():
+def connect_db(database=None):
     """
     Connects to the mysql database server
 
@@ -16,15 +16,27 @@ def connect_db():
         user = os.getenv("DATABASE_USER_NAME")
         password = os.getenv("DATABASE_USER_PASSWORD")
 
-        connection = mysql.connector.connect(
-            host = host,
-            user = user,
-            password = password,
-        )
+        config = {
+            'user': user,
+            'password': password,
+            'host': host,
+            'database': database,
+            'raise_on_warnings': True
+        }
+
+        connection = mysql.connector.connect(**config)
 
         if connection.is_connected():
             return connection
-            
-    except Error as e:
-        print(f"Python database connection error: {e}")
+
+    except mysql.connector.Error as err:
+        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            print("Something is wrong with your user name or password")
+        elif err.errno == errorcode.ER_BAD_DB_ERROR:
+            print("Database does not exist")
+        else:
+            print(err)
+        return None
+    else:
+        connection.close()
         return None
