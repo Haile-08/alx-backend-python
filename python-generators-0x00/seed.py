@@ -124,3 +124,69 @@ def create_table(connection):
             print(err)
 
 
+def insert_data(connection, data):
+    """
+    Inserts data in the database if it does not exist
+
+    Args:
+        connection: A MySQL connection object.
+        data: The path to the CSV file containing the data to be inserted.
+
+    Returns:
+        None
+    """
+    try:
+        if not connection or not connection.is_connected():
+            raise ValueError("Database not connected or connection not available.")
+
+        with connection.cursor() as cursor:
+            cursor.execute("USE ALX_prodev;")
+
+            with open(data, mode="r", encoding="utf-8") as file:
+                reader = csv.DictReader(file)
+
+                insert_query = """
+                    INSERT INTO user_data (name, email, age) 
+                    VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                    name = VALUES(name),
+                    age = VALUES(age);
+                """
+
+                required_headers = {"name", "email", "age"}
+                rows_to_insert = []
+                if not required_headers.issubset(reader.fieldnames):
+                    raise ValueError(f"CSV file is missing required headers: {required_headers - set(reader.fieldnames)}")
+
+                for row in reader:
+                    name = row["name"].strip()
+                    email = row["email"].strip()
+                    try:
+                        age = int(row["age"])
+                    except ValueError:
+                        logging.warning(f"Skipping row with invalid age: {row}")
+                        continue
+
+                    rows_to_insert.append((name, email, age))
+
+                if rows_to_insert:
+                    cursor.executemany(insert_query, rows_to_insert)
+                    connection.commit()
+                else:
+                    print("No valid rows to insert.")
+
+    except FileNotFoundError as e:
+        print(f"Error: File not found - {data}")
+        logging.error(f"File not found: {e}")
+
+    except ValueError as e:
+        print(f"Error: {e}")
+        logging.error(f"Value error: {e}")
+
+    except Error as e:
+        print(f"Database error: {e}")
+        logging.error(f"Database error: {e}")
+
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        logging.error(f"Unexpected error: {e}")
