@@ -177,7 +177,7 @@ def insert_data(connection, data):
 
     except FileNotFoundError as e:
         print(f"Error: File not found - {data}")
-        logging.error(f"File not found: {e}")
+        logging.error(f"File not found: {e}")ush
 
     except ValueError as e:
         print(f"Error: {e}")
