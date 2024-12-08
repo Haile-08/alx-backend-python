@@ -58,7 +58,7 @@ def create_database(connection):
                 cursor.execute("CREATE DATABASE IF NOT EXISTS ALX_prodev;")
 
         else:
-            print(f"Error database not connected")
+            raise ValueError("Error database not connected.")
 
     except mysql.connector.Error as err:
         if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -67,3 +67,24 @@ def create_database(connection):
             print("Database does not exist")
         else:
             print(err)
+
+def connect_to_prodev():
+    """
+    Connects the the ALX_prodev database in MYSQL
+
+    Returns:
+        connection: A MySQL connection object if successful, otherwise None.
+    """
+    try:
+        connection = connect_db(database="ALX_prodev")
+
+        if connection and connection.is_connected():
+            return connection
+
+        else:
+            raise ValueError("Can not connect to ALX_prodev database.")
+
+    except mysql.connector.Error as err:
+        print(f"Error connecting to ALX_prodev: {err}")
+        return None
+
