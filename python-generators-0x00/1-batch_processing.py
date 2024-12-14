@@ -17,11 +17,11 @@ def stream_users_in_batches(batch_size):
             batch = []
             for row in cursor:
                 batch.append(row)
-                if len(batch) == batch_size:  # When batch is full, yield it
+                if len(batch) == batch_size:
                     yield batch
-                    batch = []  # Reset batch
+                    batch = []
 
-            if batch:  # Yield remaining rows if any
+            if batch:
                 yield batch
 
         else:
