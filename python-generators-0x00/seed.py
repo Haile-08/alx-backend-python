@@ -20,8 +20,16 @@ def connect_db(database=None):
         user = os.getenv("DATABASE_USER_NAME")
         password = os.getenv("DATABASE_USER_PASSWORD")
 
-        if not host or not user or not password:
-            print("Error: One or more environment variables (host, user, password) are not set.")
+        if not host:
+            print("Error: environment variable host not set.")
+            return None
+
+        if not user:
+            print("Error: environment variable user not set.")
+            return None
+            
+        if not password:
+            print("Error: environment variable password not set.")
             return None
 
         config = {

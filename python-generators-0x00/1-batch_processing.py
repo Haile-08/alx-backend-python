@@ -9,26 +9,36 @@ def stream_users_in_batches(batch_size):
     Generator to fetch and process data in batches from the users database
     """
     try:
-        with seed.connect_to_prodev() as connection:
-            if connection and connection.is_connected():
-                with connection.cursor(dictionary=True, buffered=True) as cursor:
-                    query = ("SELECT user_id, name, email, age FROM user_data WHERE age >= %s LIMIT %s;")
-                    cursor.execute(query, (25, batch_size))
-                    for (user_id, name, email, age) in cursor:
-                        yield { f"user_id: {user_id}, name: {name}, email: {email}, age: {age}" }
-            else:
-                raise ValueError("Failed to connect to ALX_prodev database.")
+        connection = seed.connect_to_prodev()
+        if connection and connection.is_connected():
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM user_data;")
+
+            batch = []
+            for row in cursor:
+                batch.append(row)
+                if len(batch) == batch_size:  # When batch is full, yield it
+                    yield batch
+                    batch = []  # Reset batch
+
+            if batch:  # Yield remaining rows if any
+                yield batch
+
+        else:
+            raise ValueError("Failed to connect to ALX_prodev database.")
+    
     except Error as e:
         print(f"Error connecting to ALX_prodev: {e}")
-        return None
     finally:
         if connection and connection.is_connected():
             connection.close()
 
 def batch_processing(batch_size):
     """
-    processes each batch to filter users over the age of25
+    Processes each batch to filter users over the age of 25
     """
-    for user in stream_users_in_batches(50):
-        print(user)
-        next(stream_users_in_batches(50))
+    for batch in stream_users_in_batches(batch_size):
+        processed_batch = [user for user in batch if user['age'] > 25]
+        
+        for user in processed_batch:
+            print(user)
