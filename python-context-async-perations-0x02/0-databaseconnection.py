@@ -4,7 +4,7 @@ import sqlite3
 class DatabaseConnection:
     def __init__(self, db):
         """
-        constructor for Database
+        constructor for Database class
 
         Args:
             db: database name
