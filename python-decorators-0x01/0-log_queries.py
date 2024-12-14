@@ -8,7 +8,7 @@ def log_queries(func):
     Logs database queries executed by any function
     """
     def wrapper_log_queries(*args, **kwargs):
-        print(f"Executing query: {kwargs.get('query')}")
+        print(f"{datetime.now()} - Executing query: {kwargs.get('query')}")
         return func(*args, **kwargs)
     return wrapper_log_queries
 
