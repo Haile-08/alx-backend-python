@@ -4,14 +4,16 @@ import functools
 def with_db_connection(func):
     @functools.wraps(func)
     def wrapper_with_db_connection(*args, **kwargs):
+        conn = None
         try:
             conn = sqlite3.connect("user.db")
             return func(conn, *args, **kwargs)
         except sqlite3.Error as error:
             print("Error:", error)
         finally:
-            conn.close()
-            
+            if conn:
+                conn.close()
+
     return wrapper_with_db_connection
 
 @with_db_connection 
