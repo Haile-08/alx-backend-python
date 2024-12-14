@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
-import mysql.connector 
+import mysql.connector
 from dotenv import load_dotenv
+from mysql.connector import errorcode
 import os
+import csv
 
 def connect_db(database=None):
     """
@@ -17,6 +19,10 @@ def connect_db(database=None):
         host = os.getenv("DATABASE_HOST_NAME")
         user = os.getenv("DATABASE_USER_NAME")
         password = os.getenv("DATABASE_USER_PASSWORD")
+
+        if not host or not user or not password:
+            print("Error: One or more environment variables (host, user, password) are not set.")
+            return None
 
         config = {
             'user': user,
@@ -39,9 +45,7 @@ def connect_db(database=None):
         else:
             print(err)
         return None
-    else:
-        connection.close()
-        return None
+    return None
 
 
 def create_database(connection):
@@ -56,8 +60,10 @@ def create_database(connection):
     """
     try:
         if connection and connection.is_connected():
-             with connection.cursor() as cursor:
-                cursor.execute("CREATE DATABASE IF NOT EXISTS ALX_prodev;")
+            cursor = connection.cursor()
+            cursor.execute("CREATE DATABASE IF NOT EXISTS ALX_prodev;")
+            connection.commit()
+            cursor.close()
 
         else:
             raise ValueError("Error database not connected.")
@@ -103,8 +109,8 @@ def create_table(connection):
     """
     try:
         if connection and connection.is_connected():
-             with connection.cursor() as cursor:
-                cursor.execute("""
+            cursor = connection.cursor()
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_data (
                     user_id CHAR(36) DEFAULT (UUID()) PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
@@ -113,6 +119,8 @@ def create_table(connection):
                 )
             """)
             connection.commit()
+            cursor.close()
+            print("Table user_data created successfully.")
 
         else:
             raise ValueError("Error database not connected.")
@@ -128,7 +136,7 @@ def create_table(connection):
 
 def insert_data(connection, data):
     """
-    Inserts data in the database if it does not exist
+    Inserts data in the database from a CSV file
 
     Args:
         connection: A MySQL connection object.
@@ -140,55 +148,48 @@ def insert_data(connection, data):
     try:
         if not connection or not connection.is_connected():
             raise ValueError("Database not connected or connection not available.")
+        
+        cursor = connection.cursor()
+        with open(data, mode="r", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
 
-        with connection.cursor() as cursor:
-            cursor.execute("USE ALX_prodev;")
+            required_headers = {"name", "email", "age"}
+            if not required_headers.issubset(reader.fieldnames):
+                raise ValueError(f"CSV file is missing required headers: {required_headers - set(reader.fieldnames)}")
 
-            with open(data, mode="r", encoding="utf-8") as file:
-                reader = csv.DictReader(file)
+            insert_query = """
+                INSERT INTO user_data (name, email, age) 
+                VALUES (%s, %s, %s)
+                AS new_vals
+                ON DUPLICATE KEY UPDATE
+                name = new_vals.name,
+                age = new_vals.age;
+            """
 
-                insert_query = """
-                    INSERT INTO user_data (name, email, age) 
-                    VALUES (%s, %s, %s)
-                    ON DUPLICATE KEY UPDATE
-                    name = VALUES(name),
-                    age = VALUES(age);
-                """
+            rows_to_insert = []
+            for row in reader:
+                name = row["name"].strip()
+                email = row["email"].strip()
+                try:
+                    age = int(row["age"].strip())
+                except ValueError:
+                    print(f"Skipping row with invalid age: {row}")
+                    continue
+                
+                rows_to_insert.append((name, email, age))
 
-                required_headers = {"name", "email", "age"}
-                rows_to_insert = []
-                if not required_headers.issubset(reader.fieldnames):
-                    raise ValueError(f"CSV file is missing required headers: {required_headers - set(reader.fieldnames)}")
-
-                for row in reader:
-                    name = row["name"].strip()
-                    email = row["email"].strip()
-                    try:
-                        age = int(row["age"])
-                    except ValueError:
-                        logging.warning(f"Skipping row with invalid age: {row}")
-                        continue
-
-                    rows_to_insert.append((name, email, age))
-
-                if rows_to_insert:
-                    cursor.executemany(insert_query, rows_to_insert)
-                    connection.commit()
-                else:
-                    print("No valid rows to insert.")
-
+            if rows_to_insert:
+                cursor.executemany(insert_query, rows_to_insert)
+                connection.commit()
+                print(f"Inserted {len(rows_to_insert)} rows successfully.")
+            else:
+                print("No valid rows to insert.")
+        cursor.close()
     except FileNotFoundError as e:
         print(f"Error: File not found - {data}")
-        logging.error(f"File not found: {e}")ush
-
     except ValueError as e:
         print(f"Error: {e}")
-        logging.error(f"Value error: {e}")
-
-    except Error as e:
+    except mysql.connector.Error as e:
         print(f"Database error: {e}")
-        logging.error(f"Database error: {e}")
-
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-        logging.error(f"Unexpected error: {e}")
