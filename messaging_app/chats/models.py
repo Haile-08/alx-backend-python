@@ -39,7 +39,7 @@ class User(models.Model):
 class Conversation(models.Model):
     conversation_id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False)
-    participants = models.ManyToManyField(User, related_name="conversations")
+    participant_id = models.ManyToManyField(User, related_name="conversations")
     created_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -52,7 +52,7 @@ class Message(models.Model):
                 db_index=True
             )
     sender_id = models.ForeignKey(User, on_delete=models.CASCADE)
-    conversation = models.ForeignKey(
+    conversation_id = models.ForeignKey(
                     Conversation,
                     on_delete=models.CASCADE,
                     related_name="messages"
