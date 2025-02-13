@@ -29,6 +29,9 @@ class User(models.Model):
             )
     created_at = models.DateField(auto_now_add=True)
 
+    def get_full_name(self):
+        return f"{self.first_name} {self.last_name}"
+
     def __str__(self):
         return f"- {self.first_name} {self.last_name}: ({self.email})"
 
@@ -36,13 +39,9 @@ class User(models.Model):
 # Create a conversation model here.
 class Conversation(models.Model):
     conversation_id = models.UUIDField(
-                    primary_key=True,
-                    default=uuid.uuid4,
-                    unique=True,
-                    db_index=True
-                )
-    participants_id = models.ForeignKey(User, on_delete=models.CASCADE)
-    created_at = models.DateField(auto_now_add=True)
+        primary_key=True, default=uuid.uuid4, editable=False)
+    participants = models.ManyToManyField(User, related_name="conversations")
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 # Create a message model here.
