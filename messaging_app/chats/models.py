@@ -13,11 +13,11 @@ class User(models.Model):
                 primary_key=True,
                 default=uuid.uuid4,
                 unique=True,
-                db_index=True
+                editable=False
             )
     first_name = models.CharField(max_length=255, null=False)
     last_name = models.CharField(max_length=255, null=False)
-    email = models.CharField(null=False, unique=True)
+    email = models.EmailField(null=False, unique=True)
     password_hash = models.CharField(max_length=255, null=False)
     phone_number = models.CharField(null=True, blank=True)
     role = models.CharField(
@@ -29,10 +29,10 @@ class User(models.Model):
     created_at = models.DateField(auto_now_add=True)
 
     def get_full_name(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"NAME: {self.first_name} {self.last_name}"
 
     def __str__(self):
-        return f"- {self.first_name} {self.last_name}: ({self.email})"
+        return f"USER: {self.first_name} {self.last_name}: ({self.email})"
 
 
 # Create a conversation model here.
