@@ -4,11 +4,10 @@ from django.db import models
 
 # Create a user model here.
 class User(models.Model):
-    ROLE_CHOICES = {
-        'guest': 'guest',
-        'host': 'host',
-        'admin': 'admin',
-    }
+    class Role_Choices(models.TextChoices):
+        GUEST = "guest", _("guest")
+        HOST = "host", _("host")
+        ADMIN = "admin", _("admin")
 
     user_id = models.UUIDField(
                 primary_key=True,
@@ -23,7 +22,7 @@ class User(models.Model):
     phone_number = models.CharField(null=True, blank=True)
     role = models.CharField(
                 max_length=10,
-                choices=ROLE_CHOICES,
+                choices=Role_Choices,
                 null=False,
                 default='guest'
             )
