@@ -20,7 +20,7 @@ class User(models.Model):
     last_name = models.CharField(max_length=255, null=False)
     email = models.EmailField(null=False, unique=True)
     password_hash = models.CharField(max_length=255, null=False)
-    phone_number = models.CharField(null=True, blank=True)
+    phone_number = models.CharField(max_length=15, null=True, blank=True)
     role = models.CharField(
                 max_length=10,
                 choices=Role_Choices,
