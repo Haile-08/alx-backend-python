@@ -10,9 +10,15 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = '__all__'
 
+    # def validate(self, value):
+    #     email_regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
+    #     if not re.match(email_regex, value['email']):
+    #         raise serializers.ValidationError("Invalid email format.")
+    #     return value
+    
     def validate_email(self, value):
         email_regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
-        if not re.match(email_regex, value['email']):
+        if not re.match(email_regex, value):
             raise serializers.ValidationError("Invalid email format.")
         return value
 
