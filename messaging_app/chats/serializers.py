@@ -9,10 +9,18 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = '__all__'
 
+    def validate_email(self, value):
+        if "@" not in value:
+            raise serializers.ValidationError(
+                "Invalid email doesn't have @ value."
+            )
+        return True
+
 
 # Message Serializer
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.SerializerMethodField()
+    sender_number = serializers.CharField(source="sender_id.phone_number")
 
     class Meta:
         model = Message
@@ -20,8 +28,9 @@ class MessageSerializer(serializers.ModelSerializer):
             'message_id',
             'sender_id',
             'sender_name',
-            'conversation',
+            'conversation_id',
             'message_body',
+            'sender_number',
             'sent_at'
             ]
 
