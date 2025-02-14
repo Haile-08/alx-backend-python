@@ -1,3 +1,4 @@
+import re
 from rest_framework import serializers
 from .models import User, Message, Conversation
 
@@ -10,11 +11,10 @@ class UserSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate_email(self, value):
-        if "@" not in value:
-            raise serializers.ValidationError(
-                "Invalid email doesn't have @ value."
-            )
-        return True
+        email_regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
+        if not re.match(email_regex, value['email']):
+            raise serializers.ValidationError("Invalid email format.")
+        return value
 
 
 # Message Serializer
