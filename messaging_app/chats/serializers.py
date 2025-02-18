@@ -46,7 +46,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
 # Conversation Serializer
 class ConversationSerializer(serializers.ModelSerializer):
-    participants = serializers.SerializerMethodField()
+    participant_id = serializers.SerializerMethodField()
     messages = MessageSerializer(many=True, read_only=True,)
 
     class Meta:
@@ -58,8 +58,8 @@ class ConversationSerializer(serializers.ModelSerializer):
             'created_at'
             ]
 
-    def get_participants(self, obj):
+    def get_participant_id(self, obj):
         return [
-                f"{participant.first_name} {participant.last_name}"
-                for participant in obj.participant_id.all()
+                f"{participant_id.first_name} {participant_id.last_name}"
+                for participant_id in obj.participant_id.all()
             ]
