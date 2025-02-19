@@ -2,6 +2,8 @@ from django.shortcuts import render
 from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
 from .models import User, Conversation, Message
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from .permissions import IsSenderOfMessage, IsInTheConversation
 from .serializers import UserSerializer, ConversationSerializer, MessageSerializer
 
 # Create a user viewsets
@@ -9,6 +11,7 @@ class UserViewSet(viewsets.ModelViewSet):
     """
     A viewset for managing the user
     """
+    permission_classes = [AllowAny]
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
@@ -18,6 +21,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     """
     A viewset for managing the conversation
     """
+    permission_classes = [IsAuthenticated, IsInTheConversation]
     queryset = Conversation.objects.all()
     serializer_class = ConversationSerializer
     filter_backends = [filters.SearchFilter]
@@ -82,6 +86,7 @@ class MessageViewSet(viewsets.ModelViewSet):
             "message_body": "Hello world"
         }
     """
+    permission_classes = [IsAuthenticated, IsSenderOfMessage]
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
     filter_backends = [filters.SearchFilter]
