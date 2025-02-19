@@ -3,6 +3,7 @@ from rest_framework.permissions import BasePermission
 class IsInTheConversation(BasePermission):
     """
     Custom permission to allow only users (participants) who are in the convo to view a conversation.
+    https://testdriven.io/blog/custom-permission-classes-drf/
     """
 
     def has_object_permission(self, request, view, obj):

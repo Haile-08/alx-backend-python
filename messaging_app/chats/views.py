@@ -1,7 +1,9 @@
 from django.shortcuts import render
+from .auth import CustomTokenObtainPairSerializer
 from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
 from .models import User, Conversation, Message
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .permissions import IsSenderOfMessage, IsInTheConversation
 from .serializers import UserSerializer, ConversationSerializer, MessageSerializer
@@ -148,3 +150,8 @@ class MessageViewSet(viewsets.ModelViewSet):
             serialized_message,
             status=status.HTTP_200_OK
         )
+
+
+# create custom token obtain view
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
