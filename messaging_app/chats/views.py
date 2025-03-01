@@ -1,157 +1,96 @@
-from django.shortcuts import render
-from .auth import CustomTokenObtainPairSerializer
-from rest_framework import viewsets, status, filters
+from rest_framework import viewsets, permissions
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import User, Conversation, Message
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from .permissions import IsSenderOfMessage, IsInTheConversation
-from .serializers import UserSerializer, ConversationSerializer, MessageSerializer
+from .models import User, Message, Conversation
+from .serializers import UserSerializer, MessageSerializer, ConversationSerializer
 
-# Create a user viewsets
+
 class UserViewSet(viewsets.ModelViewSet):
-    """
-    A viewset for managing the user
-    """
-    permission_classes = [AllowAny]
-    queryset = User.objects.all()
+    queryset = User.objects.all().order_by('-created_at')
     serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 
-# Create a conversation viewsets
-class ConversationViewSet(viewsets.ModelViewSet):
-    """
-    A viewset for managing the conversation
-    """
-    permission_classes = [IsAuthenticated, IsInTheConversation]
-    queryset = Conversation.objects.all()
-    serializer_class = ConversationSerializer
-    filter_backends = [filters.SearchFilter]
-    search_fields = [
-        'participant_id__first_name',
-        'participant_id__last_name',
-        'participant_id__email'
-        ]
-
-    def create(self, request):
-        """
-        Override the modal view set create method to create
-        conversation with one or more participants.
-        Request:
-            {
-                "participants_id": [
-                    "076b2a46-376c-4656-90c5-07cb186ce690",
-                    "ea561865-dc57-44c1-bcb1-6d2dd36debd9"
-                    ]
-            }
-        """
-        participants_id = request.data.get('participants_id', [])
-
-        # check if there is participants ids specified has two participants
-        if not participants_id or len(participants_id) < 2: 
-            return Response(
-                {'Error:': 'At least two participants in the conversation'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Ensure all the participants exist in the user modal
-        # check all the participants id are in user
-        # input [1,2,3] check using user_id__in checks array of ids
-        # QuerySet Field Lookups Reference
-        participants = User.objects.filter(user_id__in=participants_id)
-        if len(participants) != len(participants_id):
-            return Response(
-                {'Error:': 'One or more users do not exist.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Create a new conversation
-        conversation = Conversation.objects.create()
-        conversation.participant_id.set(participants)
-        conversation.save()
-        serialized_conversation = ConversationSerializer(conversation).data
-
-        return Response(
-            serialized_conversation,
-            status=status.HTTP_200_OK
-        )
-
-
-# Create a message viewsets
 class MessageViewSet(viewsets.ModelViewSet):
-    """
-    A viewset for managing the message
-    Request:
-        {
-            "sender_id": "076b2a46376c465690c507cb186ce690",
-            "conversation_id": "694cff0b-eeee-4ceb-bdb2-a371a374b866",
-            "message_body": "Hello world"
-        }
-    """
-    permission_classes = [IsAuthenticated, IsSenderOfMessage]
-    queryset = Message.objects.all()
+    queryset = Message.objects.all().order_by('conversation', '-sent_at')
     serializer_class = MessageSerializer
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['sender_id__first_name', 'sender_id__last_name', 'message_body']
 
-    def create(self, request):
-        """
-        Override the modal view set create method to send
-        a message to one or more participants.
-        """
-        conversation_id = request.data.get('conversation_id')
-        sender_id = request.data.get('sender_id')
+    @action(methods=['get'], detail=False)
+    def get_all(self, request):
+        messages = Message.objects.all().order_by('-sent_at')
+        serializer = MessageSerializer(messages, many=True)
+
+        return Response(serializer.data)
+    
+    @action(methods=['get'], detail=True)
+    def get_conversation(self, request, pk=None):
+        conversation = Conversation.objects.filter(pk=pk).first()
+        if not conversation:
+            return Response({'Error': 'Conversation not exists.'}, status=404)
+        
+        messages = Message.objects.filter(conversation=conversation).order_by('-sent_at')
+        serializer = MessageSerializer(messages, many=True)
+
+        return Response(serializer.data)
+
+    @action(methods=['POST'], detail=False)
+    def _create(self, request):
+        sender_id = request.data.get('sender')
+        conversation_id = request.data.get('conversation')
         message_body = request.data.get('message_body')
 
-        # check if the conversation id is specified
-        if not conversation_id:
-            return Response(
-                {'Error:': 'conversation_id not specified.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if not all([sender_id, conversation_id, message_body]):
+            return Response({'Error': 'All fields are required.'}, status=400)
         
-        # check if the sender id is specified
-        if not sender_id:
-            return Response(
-                {'Error:': 'sender not specified.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        sender = User.objects.filter(pk=sender_id).first()
+        conversation = Conversation.objects.filter(pk=conversation_id).first()
+        if not all([sender, conversation]):
+            return Response({'Error': 'Sender or conversation not exists.'}, status=404)
         
-        # check if the message body is specified
-        if not message_body:
-            return Response(
-                {'Error:': 'message not specified.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # check if the conversation id exist in the database
-        conversation_exist = Conversation.objects.get(conversation_id=conversation_id)
-        if not conversation_exist:
-            return Response(
-                {'Error:': 'conversation not found.'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # check if the sender is in the conversation
-        if sender_id not in conversation_exist.participant_id.all():
-            return Response(
-                {'Error:': 'You are not part of this conversation..'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        message = Message.objects.create(
-            conversation_id=conversation_id,
-            sender_id=sender_id,
-            message_body=message_body,
-        )
+        message = Message.objects.create(sender=sender, conversation=conversation, message_body=message_body)
+        dto = self.get_serializer(message).data
 
-        serialized_message = MessageSerializer(message).data
-        return Response(
-            serialized_message,
-            status=status.HTTP_200_OK
-        )
+        return Response(dto, status=201)
 
 
-# create custom token obtain view
-class CustomTokenObtainPairView(TokenObtainPairView):
-    serializer_class = CustomTokenObtainPairSerializer
+class ConversationViewSet(viewsets.ModelViewSet):
+    queryset = Conversation.objects.all().order_by('-created_at')
+    serializer_class = ConversationSerializer
+
+    def get_serializer_context(self):
+        """
+        Include the request in the context for serializers.
+        """
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    @action(methods=['get'], detail=False)
+    def get_all(self, request):
+        conversations = Conversation.objects.all().order_by('-created_at')
+        serializer = ConversationSerializer(conversations, many=True)
+
+        return Response(serializer.data)
+
+    @action(methods=['POST'], detail=False)
+    def _create(self, request):
+        participants_ids = request.data.get('participants', [])
+
+        filters = {
+            'participants': participants_ids,
+        }
+
+        if not filters['participants']:
+            return Response({'Error': 'This field is required.'}, status=400)
+        if not participants_ids or len(participants_ids) < 2:
+            return Response({'Error': 'At least 2 participants are required.'}, status=400)
+        
+        participants = User.objects.filter(pk__in=participants_ids)
+        if len(participants) != len(participants_ids):
+            return Response({'Error': 'Some or all users not exists'}, status=404)
+        
+        conversation = Conversation.objects.create(title=request.data.get('title'))
+        conversation.participants.set(participants)
+        dto = self.get_serializer(conversation).data
+
+        return Response(dto, status=201)
